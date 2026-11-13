@@ -108,15 +108,3 @@ cargo run --locked
 ## 문서
 
 [제품 요구사항](docs/prd.md) · [아키텍처](docs/architecture.md) · [UX 설계](docs/design-system.md) · [검증 기준](docs/acceptance.md) · [릴리스](docs/releasing.md)
-
-## 앱 빌드 검증 상태
-
-빌드 스크립트는 프로젝트 볼륨의 여유 공간이 6GiB 미만이면 시작하지 않습니다. 이 값은 최소 사전 점검이며
-실제 최대 사용량을 보장하지 않습니다. 이 호스트에서는 이름 변경 전 `Zenoh Observatory.app`을 저장 공간을
-줄인 별도 arm64 debug 빌드로 생성했고 ad-hoc 코드 서명의 정합성을 확인했습니다. LaunchServices로 실제 앱을 열어
-격리 DB의 계정 생성·작업 화면, 기존 계정 이관 후 로그인·실제 토픽 수신·갱신·레이아웃을 확인했습니다.
-이관한 계정의 해시는 원본과 일치하며 기존 웹 수집기는 유지했습니다.
-
-Finder 수동 더블클릭, 네트워크 권한 거절, 종료·재실행 동작은 아직 검증하지 않았습니다.
-기본 release 빌드·Developer ID 서명·공증도 별도 검증 대상입니다.
-Topicwake로 표시명을 바꾼 최신 소스의 앱 번들은 이 로컬 실행 증거와 구분합니다.
