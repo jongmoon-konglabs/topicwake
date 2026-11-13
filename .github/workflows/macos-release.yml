@@ -1,0 +1,111 @@
+name: macOS build and release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Apple Silicon
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      CARGO_INCREMENTAL: '0'
+      TARGET: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.22.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')
+          rustup toolchain install "$toolchain" --profile minimal --component rustfmt --component clippy
+          rustup target add --toolchain "$toolchain" "$TARGET"
+      - name: Validate release versions
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/test-release-version.py
+          python3 scripts/check-release-version.py "$RELEASE_TAG"
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+      - name: Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix frontend test
+          npm --prefix frontend run build
+          cargo test --locked
+          cargo test --locked --manifest-path src-tauri/Cargo.toml
+      - name: Build app and disk image
+        run: npx --yes @tauri-apps/cli@2.12.4 build --ci --target "$TARGET" --bundles app,dmg -- --locked
+      - name: Verify and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(src-tauri/target/"$TARGET"/release/bundle/macos/*.app)
+          dmgs=(src-tauri/target/"$TARGET"/release/bundle/dmg/*.dmg)
+          [[ ${#apps[@]} == 1 && ${#dmgs[@]} == 1 ]]
+          app=${apps[0]}
+          executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          [[ $(lipo -archs "$app/Contents/MacOS/$executable") == arm64 ]]
+          plutil -lint "$app/Contents/Info.plist"
+          codesign --verify --deep --strict "$app"
+          hdiutil verify "${dmgs[0]}"
+          version=$(python3 scripts/check-release-version.py)
+          name="${GITHUB_REPOSITORY#*/}-$version-$TARGET"
+          mkdir artifacts
+          ditto -c -k --sequesterRsrc --keepParent "$app" "artifacts/$name.app.zip"
+          cp "${dmgs[0]}" "artifacts/$name.dmg"
+          (cd artifacts && shasum -a 256 "$name.app.zip" "$name.dmg" > "$name.sha256")
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-aarch64-apple-darwin
+          path: artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  release:
+    name: Publish release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: macos-*
+          path: artifacts
+          merge-multiple: true
+      - name: Publish with generated release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          (cd artifacts && sha256sum --check ./*.sha256)
+          notice='macOS Apple Silicon용 빌드입니다. 앱은 ad-hoc 서명만 되어 있으며 Apple Developer ID 서명·공증은 제공하지 않습니다. 인터넷에서 내려받은 앱은 Gatekeeper에 의해 차단될 수 있습니다. 조직의 보안 정책을 따르세요.'
+          gh release create "$RELEASE_TAG" artifacts/* --verify-tag --generate-notes --notes "$notice"

@@ -1,0 +1,17 @@
+[package]
+name = "zenoh-observatory"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.4", features = [] }
+
+[dependencies]
+zenoh-admin = { path = ".." }
+tauri = { version = "=2.12.5", features = [] }
+tauri-plugin-single-instance = "=2.5.5"
+tauri-plugin-dialog = "2"
+tokio = { version = "1", features = ["sync", "net", "time"] }
+rusqlite = { version = "0.37", features = ["bundled", "backup"] }
+rand = "0.8"
+hex = "0.4"
