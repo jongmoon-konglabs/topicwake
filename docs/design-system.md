@@ -1,197 +1,28 @@
-# Topicwake — UI/UX와 디자인 시스템
+# UI guidelines
 
-상태: **구현 소스 대조**. 기준일 2026-11-13. `frontend/main.jsx`, `topic-model.mjs`,
-`astryx-themes.js`, `src/themes/observatory/observatoryTheme.ts`, `package.json`을 기준으로 작성했다. 와이어프레임과 소스 확인은 실제 브라우저·키보드·
-색 대비 검수 통과 증거가 아니다. Mac 창은 `src-tauri/src/main.rs`, 시작 화면은
-`session-startup.mjs`도 대조한다. 화면 검수 결과는 [검증 기준](acceptance.md)과 별도로 기록한다.
+The primary task is **find a topic → select it → read its data**. Keep network details secondary and avoid decorative metrics or explanatory copy in the main workspace.
 
-## 1. 목표와 정보 위계
+## Layout
 
-주요 작업은 **토픽 찾기 → 선택 → 받은 데이터 읽기**다. 큰 지표 카드와 목록을 덮는 상세 Drawer는
-두지 않는다. 넓은 화면에서는 좁은 네트워크 정보 레일로 연결 맥락을 분리하고 목록·데이터를 중심에 둔다.
-정보 레일은 페이지 이동용 사이드바가 아니다. 단일 작업에 가짜 메뉴를 추가하지 않는다.
+- Use the standard macOS title bar. The desktop UI does not repeat a large product header.
+- Default window: 1280 × 800. Keep the centered workspace within 90 rem.
+- At 1100 px and wider, show a small network information rail beside the topic list and data pane.
+- Between 900 and 1099 px, collapse network information while keeping list and data side by side.
+- Below 900 px, open details in the same workspace and provide a clear return to the list.
+- Keep search and sort controls above the independently scrolling topic list.
 
-| 우선순위 | 화면 요소 | 결정 |
-| --- | --- | --- |
-| 1 | 토픽 목록과 데이터 | 넓은 화면에서 나란히 표시하고 각각 스크롤 |
-| 2 | 검색·정렬 | 목록 바로 위의 작은 도구 영역 |
-| 3 | 수집 상태 | 상단 한 줄 요약; 큰 숫자 카드 없음 |
-| 4 | 네트워크·진단 설명 | 1100px 이상 정보 레일, 그 미만은 기본 닫힌 `네트워크 정보`; 설명은 접힌 도움말 |
+## Visual language
 
-운영 화면에는 피어 ID·연결 수를 노출하지 않는다. 서버 API의 연결 정보는 물리 장치 수나 전체 발견 수가 아니다.
-`수집기 실행 중`은 로컬 세션이 열렸다는 의미이며 실제 샘플 수신의 증명이 아니다. UI 갱신 성공과
-토픽의 새 데이터 수신도 서로 다른 사실이다.
+Use the Astryx-based Observatory theme: cool neutral surfaces, dark readable text, and muted blue for selection. Green and red indicate receipt state, not selection. Select the whole row and preserve its keyboard semantics. Long keys and payloads must remain readable without expanding the page width.
 
-## 2. Astryx 적용
+Use concise English labels. Describe observed facts: no recent data is not the same as a disconnected device. Keep technical caveats in contextual help, not in every row.
 
-프로젝트는 실제 Astryx **core·CLI·Neutral theme 0.7.15**, React 19, StyleX peer를 사용한다.
-활성 테마는 Neutral을 확장한 로컬 **Observatory**이며 `Theme mode="light"`로 표시한다.
-테마 소스는 `frontend/src/themes/observatory/observatoryTheme.ts`이고 정적 CSS·JS와 palette는
-CLI 생성 산출물이다. 테마에 dark 값도 있지만 현재 UI에는 dark 모드 전환이 없다.
+## States
 
-밝은 slate 배경과 흰 패널, 짙은 본문·회청색 보조 텍스트를 사용한다. 본문·제목은 한국어를 지원하는
-시스템 글꼴이다. 선택한 행은 연한 파랑 배경과 시작 가장자리의 3px 선으로 구분하고, 초록·빨강은 수신
-상태에 사용한다. 제목2 크기는 1.0625rem(기본 root 기준17px)이다. 이 선언만으로 색 대비 통과를 주장하지 않는다.
-공식 [Astryx](https://astryx.atmeta.com), [저장소](https://github.com/meta/astryx),
-[시작 문서](https://astryx.atmeta.com/docs/getting-started)를 참고한다.
+- Separate startup connection errors from invalid credentials and offer retry.
+- Show unknown receipt state when a current observation is unavailable; do not invent activity.
+- Keep the visible snapshot stable while paused or when refresh fails.
+- Mark truncated previews and deletion samples explicitly.
+- Hide stale topics without deleting their stored snapshot or the selected detail.
 
-프로젝트 로컬 CLI와 `frontend/AGENTS.md`의 template-first·component prop 확인·token 사용·built doctor
-절차를 적용한다. 실제 Astryx 컴포넌트를 쓰거나 doctor가 통과했다는 사실만으로 UI/UX A+ 또는 접근성
-통과를 주장하지 않는다. 사람이 보는 화면·동작과 소프트웨어 검사 결과를 구분한다.
-
-## 3. 넓은 화면 — viewport 900px 이상
-
-```text
-┌ Topicwake                                              사용자 [로그아웃] ┐
-│ ● 수집 상태   수신한 토픽 N개   초당 N건·추정   [화면 일시정지]          │
-├───────────────┬────────────────────────┬────────────────────────────────┤
-│ 네트워크      │ 토픽        표시/전체 │ 최신 데이터             선택 토픽 │
-│ 서버 IP       │ [토픽 이름 검색      ] │ 선택한 토픽 이름                │
-│ Wi-Fi         │ [이름순⌄][↑][오래된]  │ ● 최근 데이터 수신              │
-│ 인터넷        ├────────────────────────┤ ┌ 받은 데이터 ──────── [복사] ┐ │
-│ [연결 확인]   │ ● topic/a              │ │ 1 { "value": 1 }            │ │
-│               │   수신 · 10.0 /초      │ │                             │ │
-│ ▸ 모든 IP 주소│ ● topic/b              │ └─────────────────────────────┘ │
-│ ▸ 수신 안내   │   수신 없음 · 0.0 /초  │ 초당 수신 / 최근 수신           │
-│               │ …                      │ 수집 후 받은 수 / 형식·크기     │
-│               │                        │ 출처 IP·ID / ▸ 도움말           │
-│               │ 목록 독립 스크롤       │ 상세 독립 스크롤                │
-└───────────────┴────────────────────────┴────────────────────────────────┘
-```
-
-정보 레일은 1100px 이상에서만 표시한다. 900–1099px에서는 레일 대신 상태 줄 아래 `네트워크 정보`를
-펼쳐 보고, 목록·상세 두 열은 유지한다.
-
-- 바깥 프레임은 가운데 정렬한 `width="100%"`, `maxWidth="90rem"`이다. 기본 16px root font 기준
-  최대 1440px이며, 초광폭에서도 데이터가 화면 끝까지 늘어나지 않게 한다.
-- AppShell은 `height="fill"`, `contentPadding={0}`이다. 좌우 padding은 900px 이상 theme 단계 6,
-  그 미만은 3이며 상하는 항상 3이다. 패널 간 gap은 `var(--spacing-4)`다. 기본 root font 기준
-  좌우24px/12px, 상하12px, 패널 간16px이며 사용자 글꼴 설정에 따라 rem 크기가 달라질 수 있다.
-- 1100px 이상 grid는 `11rem clamp(20rem, 28vw, 25rem) minmax(0, 1fr)`이다. 좁은 정보 레일,
-  폭을 제한한 목록, 남은 폭을 쓰는 상세로 구성한다. 900–1099px는
-  `minmax(20rem, 2fr) minmax(0, 3fr)` 두 열이다.
-- 작업영역은 남은 높이를 채우고 외부 overflow를 제한한다. 정보 레일·목록·상세는 각각 내부 스크롤한다.
-  검색·정렬은 목록 스크롤 영역 위에, 화면 갱신 시각은 아래에 유지한다.
-- 목록은 Astryx `List density="compact"`·`hasDividers`와 `ListItem isSelected`를 사용한다. 선택은
-  전체 행의 연한 파랑 음영·시작선과 공식 선택 semantics로 표시하며, 키를 커다란 검은 버튼으로 감싸지 않는다.
-- 행 전체를 눌러 선택한다. 첫 줄은 상태 점과 토픽 이름, 둘째 줄은 짧은 수신 상태와 추정 수신량(`/초`)이다.
-  긴 키는 줄바꿈한다. 최근 수신·누적 수 기준 정렬은 유지하고, 상세의 `수집 후 받은 수`는 서버 프로세스가
-  시작된 뒤 처리한 누적 샘플 수다.
-- 상태 점은 마지막 샘플 수신 후 5초 미만이면 초록, 5초 이상이면 빨강이다. 빨강은 새 데이터가 없는
-  시간 표시이지 오프라인·장애 확정이 아니다. 미측정·갱신 실패는 중립색의 `수신 상태 확인 중`이다.
-- 긴 키·선택 음영·수신 상태가 실제 폭에서 읽히는지 검수한다. 소스의 폭 제한은 최종 가독성 검수의 대체가 아니다.
-
-## 4. 좁은 화면 — viewport 900px 미만
-
-```text
-목록 화면                          선택 후 데이터 화면
-┌ 제품명 / 사용자 ───────────┐      ┌ 제품명 / 사용자 ───────────┐
-│ 상태 요약                  │      │ 상태 요약                  │
-│ ▸ 네트워크 정보            │      │ ▸ 네트워크 정보            │
-│ 토픽 이름 검색             │      │ [← 토픽 목록]              │
-│ 정렬                       │      │ 데이터 / 선택 토픽         │
-│ 토픽 목록                  │ ───> │ 받은 데이터                │
-│ …                          │      │ 수신 정보·출처             │
-└────────────────────────────┘      └────────────────────────────┘
-```
-
-토픽을 선택하면 같은 작업영역을 데이터 화면으로 전환한다. 목록 위를 덮는 Drawer나 표 아래에 쌓이는
-상세는 없다. `← 토픽 목록`으로 돌아간다. 검색어·정렬·선택을 유지하며, 뒤로 가기 버튼·포커스·작은 폭의
-가로 넘침은 실제 브라우저에서 검수한다. 좁은 모드 전환에는 선택 데이터 영역과 목록 영역의 키보드 초점을 관리한다. 목록의 정확한 스크롤 위치
-복원은 현재 보장하지 않는다.
-
-### 네트워크 정보
-
-1100px 이상 정보 레일에서는 IP·Wi-Fi·인터넷을 한 열로 표시한다. 그 미만의 접힌 패널에서는 Astryx Grid
-`minWidth:220/max:3`, gap 4로 배치하며, 좁아지면 줄바꿈한다. 접힌 패널의 최대 높이는 30vh다.
-인터넷 검사는 버튼을 눌렀을 때만 실행한다. 결과에는 검사 시각과 `example.com:443` 대상 범위를 표시한다.
-
-피어 수·피어/라우터 ID 목록은 운영 화면에서 제거했다. 기본 정보는 `서버 IP`, Wi-Fi, 인터넷이다.
-서버가 제공하는 연결 ID와 토픽 수의 기술적 차이는 [아키텍처의 수량 정의](architecture.md#4-데이터-의미와-불변식)를 따른다.
-
-대표 IP는 제공된 주소 중 `127.*`·`::1`이 아닌 첫 값이며, 그런 값이 없으면 첫 주소다. 기본 라우트나
-Zenoh가 사용하는 실제 경로를 판별한 결과가 아니다. `모든 IP 주소 (N)`에서 loopback을 포함한 전체
-인터페이스 주소를 볼 수 있다. 수신 기준·네트워크 가시성의 설명은 `수신 상태 안내`에 둔다.
-
-## 5. 간격·표현
-
-숫자 spacing prop은 Astryx theme 단계다. 아래 값은 소스 선언이며 실제 행 높이·가독성 검수와 구분한다.
-
-| 역할 | 소스 기준 선택 |
-| --- | --- |
-| 전체 | light Observatory(Neutral 확장), 가운데 max-width 90rem; AppShell `variant="wash"`, content padding 0; 좌우 padding 6/3·상하3, pane gap spacing-4 |
-| 상태 줄 | inline padding 0, block padding 1, gap 4; 작은 supporting 텍스트 |
-| 목록 도구 | padding 3, gap 2; 정렬 Selector·방향 버튼·오래된 토픽 ToggleButton을 작은 도구 줄로 배치 |
-| 목록 | List `density="compact"`; 첫 줄 상태 점·이름, 둘째 줄 상태·/초; 선택 전체 행 음영 |
-| 상세 | padding 3, gap 3; 데이터가 메타데이터보다 먼저 |
-| 데이터 | CodeBlock `size="sm"`, `language="plaintext"`; JSON 들여쓰기·wrap·줄 번호·복사, 최대 높이 `50vh` |
-| 보조 정보 | 1100px 이상 네트워크 정보 레일; 그 미만 접힌 패널 최대30vh; 피어 수·ID 목록 없음; 오류·절단 경고는 숨기지 않음 |
-| 언어 | 공식 ko-KR catalog; 필수 입력과 `aria-required` 유지 |
-
-상태는 색상과 짧은 문구를 함께 쓴다. 키·원문 데이터는 읽기 위한 코드 표현이며 자동 HTML 실행을 하지 않는다.
-JSON은 들여쓰기하되 CodeBlock은 plaintext로 표시한다. 인코딩에 따른 syntax highlighting은 제공하지 않는다.
-
-## 6. 검색·선택·실시간 동작
-
-- **검색:** 토픽 이름만 trim·대소문자 비구분 부분문자열로 필터링한다. payload·출처 IP·ID는 검색하지 않는다.
-- **선택:** 검색어와 일치하는 선택을 유지한다. 이름 검색에서 제외되면 첫 결과 또는 빈 상세로 바뀐다.
-  단, 5분 경과로 목록에서만 숨겨진 선택은 상세에 유지하고 `목록에서 숨겨진 토픽`과 복원 버튼을 표시한다.
-- **정렬:** Selector에서 `이름순`·`최근 수신순`·`누적 수신순`을 고르고 별도 버튼으로 방향을 바꾼다. 크기 정렬은 없다.
-- **수집:** 서버는 연속 구독한다. UI는 요청 완료 후 약 1초 간격으로 조회한다.
-- **오래된 토픽:** 마지막 수신 후 5분 이상이면 기본 목록에서 숨긴다. `오래된 토픽` 토글로 다시 표시한다. 숨겨진 선택의 상세에는 `오래된 토픽 보기` 버튼도 있다.
-  삭제가 아니며 서버 보관·누적 수는 유지한다. HTTP 갱신 실패 때는 실패 직전 화면에 적용한 시각을
-  고정해 목록 가시성을 유지한다. 이미 숨겨진 오래된 토픽을 실패 때문에 다시 나타내지 않는다.
-- **수신량:** 스냅샷 사이 count 증가량을 실제 경과 시간으로 나눈 추정치다. 첫 관측·카운터 reset은 미측정이다.
-- **오류:** polling 오류와 복사·인터넷 검사 같은 동작 오류를 분리한다. 동작 오류는 다음 정상 polling으로
-  지우지 않으며 닫기 버튼을 제공한다. 이전 자료임을 알리고 별도 UI clock으로 최근 수신 나이를 갱신한다.
-  새 데이터 없음은 연결 끊김으로 단정하지 않는다. 5초·5분은 사용자가 정한 기본 관찰 기준이며,
-  저주기·이벤트성 토픽은 정상이어도 빨강 또는 숨김 상태일 수 있다.
-- **미확인·절단:** 원천 IP/ID를 추정하지 않는다. 미리보기 한도에 걸린 데이터는 절단 경고를 유지한다.
-
-`화면 일시정지`는 표시 중인 토픽 스냅샷·추정 수신량을 고정한다. 서버 수집과 HTTP 조회는 계속한다.
-정지 중에는 수신 상태를 중립 확인 상태로, 속도를 `—`로 표시한다. 5분 숨김 판정도 정지 버튼을 누른
-시각에 고정하므로 보이던 토픽이 시간이 지났다는 이유로 사라지거나, 이미 숨겨진 토픽이 다시 나타나지 않는다.
-`계속` 후에도 다음 정상 응답 전까지 이 화면을 유지하고, 정상 응답에서 최신 화면으로 바뀐다. 정지 전
-데이터 전체 이력은 복구하지 않는다. 로그아웃·401에서는 정지 상태, 검색, 선택, 표시 캐시를 초기화한다.
-
-샘플 종류가 `delete`이면 빈 메시지로 꾸미지 않고 `삭제 알림을 받았습니다`를 표시한다. `put`은 받은
-데이터를 표시하며, 구버전 서버에서 kind가 없으면 삭제 알림으로 추정하지 않는다.
-서버 `/api/topics?search=...`는 별도 key·payload 검색 기능이며, UI의 토픽 이름 전용 검색과 혼동하지 않는다.
-
-## 7. 로그인과 문구
-
-로그인에는 제품명, 계정 생성/로그인 과업, 입력 두 개와 동작 버튼만 둔다. SQLite·바이트·마케팅 소개를
-기본 화면에 노출하지 않는다. 사용자 이름은 허용 문자·길이를 짧게 안내하고 비밀번호는 `4자 이상`으로
-안내한다. 상세한 서버 정책은 [아키텍처](architecture.md)가 소유한다. 기존 계정을 초기화하지 않는다.
-
-운영 화면은 `토픽`, `데이터`, `초당 수신`, `최근 수신`, `확인 안 됨`을 기본 용어로 쓴다. 구현 용어는
-진단 상세에만 둔다. `화면 갱신`은 UI 조회 시각이며 발행·수신 시각으로 바꾸어 설명하지 않는다.
-
-### Mac 앱의 창과 시작 화면
-
-- 표준 macOS 제목막대를 사용한다. 기본 콘텐츠 크기는 1280×800, 최소 크기는 760×560이다.
-  커스텀 창 버튼·트레이·새 탐색 메뉴를 추가하지 않는다.
-- 앱에서는 제목막대의 제품명을 반복하는 큰 내부 헤더를 줄이고 계정·로그아웃만 작은 행에 둔다.
-  웹의 제품 헤더는 유지한다. `?desktop=1`은 이 표현만 바꾸며 보안 판단에 사용하지 않는다.
-- Observatory 테마·토픽 선택 음영·900/1100px 전환을 공용으로 유지한다. 작은 앱 창에서도 목록 선택 후
-  데이터 화면과 `← 토픽 목록`으로 이동한다. native 제목막대를 포함한 실제 가용 높이에서 검수한다.
-- 인증 초기 조회 중에는 `시작하는 중…`, 조회 실패에는 짧은 연결 안내와 `다시 시도`를 표시한다.
-  기존 계정의 `/auth/me` 조회가 401일 때만 로그인으로 처리하고 다른 서버 오류를 비밀번호 문제나
-  첫 계정 생성으로 보이지 않게 한다.
-- WebView가 열리기 전 DB·서버 준비가 실패하면 네이티브 시작 오류를 표시한다. 무수신으로 macOS 권한
-  거절을 단정하지 않는다. 권한·저장 경로·종료 정책은 [아키텍처](architecture.md)가 소유한다.
-- 빨간 닫기 버튼과 앱 종료는 수집기도 끝낸다. 창 비활성화는 수집 종료나 화면 일시정지와 다르다.
-
-## 8. 검수와 증거 경계
-
-- 360·768·899·900·1099·1100·1280·1440px, 200% 확대에서 목록·선택·데이터 확인 동선을 검사한다.
-- 긴 키와 큰 JSON·binary·한글, 긴 목록 마지막 행을 선택해도 상세가 접근 가능한지 검사한다.
-- 키보드·focus-visible·좁은 화면 복귀·복사 실패 안내·상태의 색상 외 단서를 확인한다.
-- 실제 계산 색상으로 본문 대비 4.5:1, 큰 텍스트·필수 경계 3:1을 확인한다.
-- Mac 앱에서는 실제 WKWebView의 1280×800·최소 창·확대, 로그인·목록 복귀·복사·시작 실패를 별도 확인한다.
-  브라우저 검수는 네이티브 창·권한 검수를 대체하지 않는다.
-- 최대 2,000행과 전체 preview polling에는 성능 한계가 남는다. [아키텍처](architecture.md)를 따른다.
-- 숫자 점수는 명시적 평가 항목과 실제 관찰 결과가 있을 때만 기록한다. 소스·빌드만으로 95점·A+를 만들지 않는다.
-
-제품 요구는 [PRD](prd.md), 인수 판정은 [검증 기준](acceptance.md)가 소유한다. 예시 키를 사용한 위 설계도는
-실제 네트워크 발견 결과가 아니며, 이 문서는 실제 LAN·최종 시각 검수 통과를 주장하지 않는다.
+See [verification](acceptance.md) for checks and [architecture](architecture.md) for data semantics.

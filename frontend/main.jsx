@@ -1,5 +1,4 @@
 import { InternationalizationProvider } from "@astryxdesign/core/i18n";
-import koKR from "@astryxdesign/core/locales/ko-KR.generated.js";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { TopNav } from "@astryxdesign/core/TopNav";
@@ -52,7 +51,7 @@ async function api(path, body) {
       : {}),
   });
   if (!response.ok) {
-    let message = `요청 실패 (${response.status})`;
+    let message = `Request failed (${response.status})`;
     try {
       message = (await response.json()).error || message;
     } catch {}
@@ -76,30 +75,30 @@ function AuthPanel({
     <VStack gap={6} paddingBlockEnd={4}>
       <Heading level={1}>Topicwake</Heading>
       <Heading level={2}>
-        {setup ? "관리자 계정 만들기" : "관리자 로그인"}
+        {setup ? "Create an account" : "Sign in"}
       </Heading>
       <TextInput
-        label="사용자 이름"
+        label="Username"
         value={username}
         onChange={setUsername}
         isRequired
         autoComplete="username"
         description={
-          setup ? "영문, 숫자, 밑줄(_), 하이픈(-)으로 1~64자" : undefined
+          setup ? "1–64 English letters, numbers, underscores or hyphens" : undefined
         }
       />
       <TextInput
-        label="비밀번호"
+        label="Password"
         type="password"
         isRequired
         value={password}
         onChange={setPassword}
         autoComplete={setup ? "new-password" : "current-password"}
         onEnter={login}
-        description={setup ? "4자 이상 입력하세요." : undefined}
+        description={setup ? "At least 4 characters." : undefined}
       />
       <Button
-        label={setup ? "계정 만들기" : "로그인"}
+        label={setup ? "Create account" : "Sign in"}
         variant="primary"
         onClick={login}
         isDisabled={busy}
@@ -125,26 +124,26 @@ function NetworkRail({
   return (
     <VStack gap={4} padding={3}>
       <Text type="label" weight="bold">
-        네트워크
+        Network
       </Text>
       <Grid columns={compact ? 1 : { minWidth: 220, max: 3 }} gap={4}>
         <VStack gap={1}>
-          <Text type="supporting">서버 IP</Text>
+          <Text type="supporting">Collector IP</Text>
           <Text type="label" style={{ overflowWrap: "anywhere" }}>
-            {primary?.ip || status?.interface_error || "확인 안 됨"}
+            {primary?.ip || status?.interface_error || "Unavailable"}
           </Text>
         </VStack>
         <VStack gap={1}>
           <Text type="supporting">Wi-Fi</Text>
           <Text type="label" style={{ overflowWrap: "anywhere" }}>
-            {status?.ssid || "확인 안 됨"}
+            {status?.ssid || "Unavailable"}
           </Text>
         </VStack>
         <VStack gap={2}>
-          <Text type="supporting">인터넷</Text>
+          <Text type="supporting">Internet</Text>
           <Text type="supporting">{internet}</Text>
           <Button
-            label="연결 확인"
+            label="Check connection"
             size="sm"
             onClick={checkInternet}
             isDisabled={busy}
@@ -153,7 +152,7 @@ function NetworkRail({
       </Grid>
       <Divider />
       <Collapsible
-        trigger={`모든 IP 주소 (${addresses.length})`}
+        trigger={`IP addresses (${addresses.length})`}
         defaultIsOpen={false}
       >
         <VStack gap={2}>
@@ -168,24 +167,24 @@ function NetworkRail({
           ))}
         </VStack>
       </Collapsible>
-      <Collapsible trigger="수신 상태 안내" defaultIsOpen={false}>
+      <Collapsible trigger="About reception" defaultIsOpen={false}>
         <VStack gap={2}>
           <Text type="supporting">
-            5초 동안 새 데이터가 없으면 빨강으로 표시하고, 5분이 지나면 목록에서
-            숨깁니다. 느리게 보내는 토픽은 연결 중에도 빨강일 수 있습니다.
+            Red means no data for 5 seconds. Topics are hidden after 5 minutes.
+            Slow or event-driven topics may still be connected.
           </Text>
           <Text type="supporting">
-            데이터를 한 번 이상 받은 토픽만 표시합니다. 같은 네트워크라도
-            방화벽이나 연결 설정에 따라 보이지 않을 수 있습니다.
+            Only topics received by this collector appear here. Firewall and
+            connection settings can limit visibility, even on the same network.
           </Text>
           {showLocalNetworkHint && (
             <Text type="supporting">
-              토픽이 보이지 않으면 macOS 설정의 로컬 네트워크 접근을 확인하고
-              앱을 다시 열어 보세요.
+              If no topics appear, check Local Network access in macOS settings
+              and reopen the app.
             </Text>
           )}
           <Text type="supporting">
-            인터넷 확인은 example.com:443 연결만 검사합니다.
+            The connection test only checks example.com:443.
           </Text>
         </VStack>
       </Collapsible>
@@ -199,8 +198,8 @@ function TopicInspector({ topic, rates, setError, now, stale }) {
     <Card padding={0}>
       <VStack gap={3} padding={3}>
         <HStack hAlign="between" vAlign="center">
-          <Heading level={2}>최신 데이터</Heading>
-          <Text type="supporting">선택한 토픽</Text>
+          <Heading level={2}>Latest data</Heading>
+          <Text type="supporting">Selected topic</Text>
         </HStack>
         <Divider />
         {topic ? (
@@ -211,72 +210,72 @@ function TopicInspector({ topic, rates, setError, now, stale }) {
             <HStack gap={2} vAlign="center">
               <StatusDot
                 variant={receipt.variant}
-                label="새 데이터 수신 여부"
+                label="Data reception status"
               />
               <Text type="supporting">{receipt.label}</Text>
             </HStack>
             {presentation.deleted ? (
-              <Text>삭제 알림을 받았습니다.</Text>
+              <Text>A delete notification was received.</Text>
             ) : (
               <CodeBlock
                 code={formatPayload(topic.payload)}
                 language="plaintext"
-                title="받은 데이터"
+                title="Received data"
                 width="100%"
                 isWrapped
                 maxHeight="50vh"
                 size="sm"
                 hasLineNumbers
-                onCopyError={() => setError("클립보드 접근이 차단되었습니다.")}
+                onCopyError={() => setError("Clipboard access was blocked.")}
               />
             )}
             <MetadataList columns="multi" label={{ position: "top" }}>
-              <MetadataListItem label="초당 수신">
+              <MetadataListItem label="Receive rate">
                 {stale
-                  ? "확인 중"
+                  ? "Unknown"
                   : rates[topic.key] == null
-                    ? "측정 중"
-                    : `${rates[topic.key].toFixed(1)}건`}
+                    ? "Measuring…"
+                    : `${rates[topic.key].toFixed(1)} msg/s`}
               </MetadataListItem>
-              <MetadataListItem label="최근 수신">
-                {Math.max(0, Math.floor((now - topic.last_seen) / 1000))}초 전
+              <MetadataListItem label="Last received">
+                {Math.max(0, Math.floor((now - topic.last_seen) / 1000))}s ago
               </MetadataListItem>
-              <MetadataListItem label="수집 후 받은 수">
-                {topic.message_count}건
+              <MetadataListItem label="Received since start">
+                {topic.message_count}
               </MetadataListItem>
-              <MetadataListItem label="데이터 형식">
+              <MetadataListItem label="Format">
                 {topic.encoding}
               </MetadataListItem>
-              <MetadataListItem label="데이터 크기">
+              <MetadataListItem label="Size">
                 {topic.last_payload_bytes ?? topic.bytes} B
               </MetadataListItem>
-              <MetadataListItem label="출처 IP">
-                {topic.source_ip || "확인 안 됨"}
+              <MetadataListItem label="Source IP">
+                {topic.source_ip || "Unavailable"}
               </MetadataListItem>
-              <MetadataListItem label="출처 ID">
-                {topic.source_id || "확인 안 됨"}
+              <MetadataListItem label="Source ID">
+                {topic.source_id || "Unavailable"}
               </MetadataListItem>
             </MetadataList>
             <Divider />
             {topic.preview_truncated && (
-              <Text type="supporting">크기 제한으로 잘린 미리보기입니다.</Text>
+              <Text type="supporting">Preview truncated at the size limit.</Text>
             )}
-            <Collapsible trigger="도움말" defaultIsOpen={false}>
+            <Collapsible trigger="Details" defaultIsOpen={false}>
               <Text as="p" type="supporting">
-                {new Date(topic.last_seen).toLocaleString("ko-KR")} 수신. Hz는
-                관찰 구간의 받은 횟수 증가량을 실제 경과 시간으로 나눈
-                추정값입니다. 신규 수신 없음은 연결 끊김을 의미하지 않습니다. 원
-                발행자 IP는 Zenoh 샘플에 없으면 추정하지 않습니다.
+                Received {new Date(topic.last_seen).toLocaleString("en-US")}.
+                Rates are estimated from message counts over elapsed time. No
+                recent data does not prove a disconnection. Publisher IPs are
+                shown only when available in the sample.
               </Text>
             </Collapsible>
           </>
         ) : (
           <VStack gap={4} paddingBlock={10}>
             <Text type="display-3" color="secondary">
-              메시지 대기 중
+              Waiting for data
             </Text>
             <Text type="supporting">
-              왼쪽에서 토픽을 선택하면 최신 메시지가 표시됩니다.
+              Select a topic to see its latest data.
             </Text>
           </VStack>
         )}
@@ -349,7 +348,7 @@ function App() {
     [busy, setBusy] = useState(false),
     [truncated, setTruncated] = useState(false),
     [updated, setUpdated] = useState(null),
-    [internet, setInternet] = useState("확인하지 않음");
+    [internet, setInternet] = useState("Not checked");
   useEffect(() => {
     let cancelled = false;
     setReady(false);
@@ -418,7 +417,7 @@ function App() {
           resetSessionView();
         } else
           setPollError(
-            "새 데이터를 가져오지 못했습니다. 잠시 후 다시 확인하세요.",
+            "Could not refresh data. Retrying…",
           );
       } finally {
         if (!cancelled) timer = setTimeout(tick, 1000);
@@ -449,12 +448,12 @@ function App() {
     } catch (e) {
       setError(
         e.status === 401
-          ? "사용자 이름과 비밀번호를 확인하세요."
+          ? "Check your username and password."
           : e.status === 409
-            ? "이미 관리자 계정이 있습니다. 로그인하세요."
+            ? "An account already exists. Sign in instead."
             : e.status === 400
-              ? "입력한 이름과 비밀번호를 확인하세요."
-              : "연결하지 못했습니다. 잠시 후 다시 시도하세요.",
+              ? "Check your username and password."
+              : "Could not connect. Please try again.",
       );
     } finally {
       setBusy(false);
@@ -464,7 +463,7 @@ function App() {
     setDetailOpen(false);
     setQuery("");
     setShowOld(false);
-    setInternet("확인하지 않음");
+    setInternet("Not checked");
     setTopics([]);
     setSelected(null);
     setStatus(null);
@@ -495,8 +494,8 @@ function App() {
       const result = await api("/network/check", {});
       setInternet(
         result.internet === "reachable"
-          ? `테스트 연결 성공 · ${new Date().toLocaleTimeString("ko-KR")}`
-          : `테스트 연결 실패 · ${new Date().toLocaleTimeString("ko-KR")}`,
+          ? `Connection test passed · ${new Date().toLocaleTimeString("en-US")}`
+          : `Connection test failed · ${new Date().toLocaleTimeString("en-US")}`,
       );
     } catch (e) {
       setError(e.message);
@@ -526,10 +525,10 @@ function App() {
                 {startupError ? (
                   <>
                     <Text role="alert">
-                      연결하지 못했습니다. 잠시 후 다시 시도하세요.
+                      Could not connect. Please try again.
                     </Text>
                     <Button
-                      label="다시 시도"
+                      label="Try again"
                       variant="primary"
                       onClick={() =>
                         setStartupAttempt((attempt) => attempt + 1)
@@ -537,7 +536,7 @@ function App() {
                     />
                   </>
                 ) : (
-                  <Text role="status">시작하는 중…</Text>
+                  <Text role="status">Starting…</Text>
                 )}
               </VStack>
             ) : (
@@ -564,18 +563,18 @@ function App() {
   const accountControls = (
     <HStack gap={2} vAlign="center">
       <Text type="supporting">{user}</Text>
-      <Button size="sm" variant="ghost" label="로그아웃" onClick={logout} />
+      <Button size="sm" variant="ghost" label="Sign out" onClick={logout} />
     </HStack>
   );
   const inspector = (
     <VStack gap={1}>
       {topic && !visible.some((item) => item.key === topic.key) && (
         <HStack padding={3}>
-          <Text type="supporting">목록에서 숨겨진 토픽</Text>
+          <Text type="supporting">Topic hidden from the list</Text>
           <Button
             size="sm"
             variant="ghost"
-            label="오래된 토픽 보기"
+            label="Show older topics"
             onClick={() => setShowOld(true)}
           />
         </HStack>
@@ -590,56 +589,56 @@ function App() {
     <VStack
       ref={listFocus}
       tabIndex={-1}
-      aria-label="토픽 목록"
+      aria-label="Topic list"
       gap={0}
       height="100%"
       minHeight={0}
     >
       <VStack gap={2} padding={3}>
         <HStack hAlign="between" vAlign="center">
-          <Heading level={2}>토픽</Heading>
+          <Heading level={2}>Topics</Heading>
           <Text type="supporting">
-            {visible.length} / {topics.length}개
+            {visible.length} / {topics.length}
           </Text>
         </HStack>
         <TextInput
-          label="토픽 검색"
+          label="Search topics"
           isLabelHidden
           type="search"
           value={query}
           onChange={setQuery}
-          placeholder="토픽 이름 검색"
+          placeholder="Search topic names"
         />
         <HStack gap={1} vAlign="center" wrap="wrap">
           <Selector
-            label="토픽 정렬"
+            label="Sort topics"
             isLabelHidden
             size="sm"
             variant="ghost"
             value={sort}
             onChange={setSort}
             options={[
-              { value: "key", label: "이름순" },
-              { value: "last_seen", label: "최근 수신순" },
-              { value: "message_count", label: "누적 수신순" },
+              { value: "key", label: "Name" },
+              { value: "last_seen", label: "Last received" },
+              { value: "message_count", label: "Messages received" },
             ]}
           />
           <Button
             size="sm"
             label={order === "asc" ? "↑" : "↓"}
             aria-label={
-              order === "asc" ? "내림차순으로 변경" : "오름차순으로 변경"
+              order === "asc" ? "Sort descending" : "Sort ascending"
             }
             variant="ghost"
             onClick={() => setOrder(order === "asc" ? "desc" : "asc")}
           />
           <ToggleButton
             size="sm"
-            label="오래된 토픽"
+            label="Older topics"
             isPressed={showOld}
             onPressedChange={setShowOld}
           >
-            오래된 토픽
+            Older topics
           </ToggleButton>
         </HStack>
       </VStack>
@@ -675,10 +674,10 @@ function App() {
                     <HStack gap={2} vAlign="center">
                       <Text type="supporting">
                         {receipt.live
-                          ? "수신"
+                          ? "Receiving"
                           : receipt.variant === "error"
-                            ? "수신 없음"
-                            : "확인 중"}
+                            ? "No recent data"
+                            : "Unknown"}
                       </Text>
                       <Text type="supporting">
                         {refreshFailed ||
@@ -687,7 +686,7 @@ function App() {
                         rates[row.key] == null
                           ? "—"
                           : rates[row.key].toFixed(1)}{" "}
-                        /초
+                        /s
                       </Text>
                     </HStack>
                   }
@@ -703,14 +702,14 @@ function App() {
           <VStack padding={4} gap={2}>
             <Text>
               {query
-                ? "검색 결과가 없습니다."
+                ? "No matching topics."
                 : topics.length && !showOld
-                  ? "최근 5분간 받은 토픽이 없습니다."
-                  : "아직 받은 토픽이 없습니다."}
+                  ? "No topics received in the last 5 minutes."
+                  : "No topics received yet."}
             </Text>
             {query && (
               <Button
-                label="검색 지우기"
+                label="Clear search"
                 size="sm"
                 variant="ghost"
                 onClick={() => setQuery("")}
@@ -722,10 +721,12 @@ function App() {
       <Divider />
       <HStack padding={2} hAlign="between">
         <Text type="supporting">
-          {truncated ? "표시 한도 초과 · 일부 토픽 제외" : "화면 갱신"}
+          {truncated
+            ? "Display limit reached · some topics omitted"
+            : "Last refresh"}
         </Text>
         <Text type="supporting">
-          {updated ? new Date(updated).toLocaleTimeString("ko-KR") : "대기 중"}
+          {updated ? new Date(updated).toLocaleTimeString("en-US") : "Waiting…"}
         </Text>
       </HStack>
     </VStack>
@@ -741,7 +742,7 @@ function App() {
             desktop ? (
               <HStack
                 as="header"
-                aria-label="계정"
+                aria-label="Account"
                 paddingInline={wide ? 6 : 3}
                 paddingBlock={1}
                 hAlign="end"
@@ -750,7 +751,7 @@ function App() {
               </HStack>
             ) : (
               <TopNav
-                label="앱"
+                label="Application"
                 heading={
                   <Text type="label" weight="bold">
                     Topicwake
@@ -784,15 +785,14 @@ function App() {
                         ? "success"
                         : "neutral"
                   }
-                  label="수집 상태"
+                  label="Collector status"
                 />
                 <Text type="supporting">
-                  {pollError ? "화면 갱신 실패" : collector.label}
+                  {pollError ? "Refresh failed" : collector.label}
                 </Text>
               </HStack>
-              <Text type="supporting">수신한 토픽 {topics.length}개</Text>
+              <Text type="supporting">{topics.length} topics</Text>
               <Text type="supporting">
-                초당{" "}
                 {!refreshFailed &&
                 !paused &&
                 !resuming &&
@@ -801,15 +801,18 @@ function App() {
                       .reduce((sum, v) => sum + (v || 0), 0)
                       .toFixed(1)
                   : "—"}
-                건 · 추정
+                {" "}
+                msg/s · estimated
               </Text>
               <Text type="supporting">
-                {paused ? "화면 정지 · 수집은 계속" : "1초마다 갱신"}
+                {paused
+                  ? "Display paused · collection continues"
+                  : "Refreshes every second"}
               </Text>
               <Button
                 size="sm"
                 variant="ghost"
-                label={paused ? "계속" : "화면 일시정지"}
+                label={paused ? "Resume" : "Pause display"}
                 onClick={() => {
                   const next = !pausedRef.current;
                   pausedRef.current = next;
@@ -824,7 +827,7 @@ function App() {
             </HStack>
             {!hasRail && (
               <VStack paddingInline={3} paddingBlock={1}>
-                <Collapsible trigger="네트워크 정보" defaultIsOpen={false}>
+                <Collapsible trigger="Network information" defaultIsOpen={false}>
                   <VStack isScrollable style={{ maxHeight: "30vh" }}>
                     <NetworkRail
                       {...{
@@ -846,14 +849,14 @@ function App() {
                 </Text>
                 {error && (
                   <Button
-                    label="닫기"
+                    label="Dismiss"
                     size="sm"
                     variant="ghost"
                     onClick={() => setError("")}
                   />
                 )}
                 {collector.detail && (
-                  <Collapsible trigger="문제 상세">
+                  <Collapsible trigger="Error details">
                     <Text type="supporting">{collector.detail}</Text>
                   </Collapsible>
                 )}
@@ -877,7 +880,7 @@ function App() {
               {hasRail && (
                 <VStack
                   as="aside"
-                  aria-label="네트워크 정보"
+                  aria-label="Network information"
                   minHeight={0}
                   isScrollable
                 >
@@ -911,7 +914,7 @@ function App() {
                 <VStack
                   ref={detailFocus}
                   tabIndex={-1}
-                  aria-label="선택한 토픽 데이터"
+                  aria-label="Selected topic data"
                   minHeight={0}
                   height="100%"
                   isScrollable
@@ -921,7 +924,7 @@ function App() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        label="← 토픽 목록"
+                        label="← Topic list"
                         onClick={() => setDetailOpen(false)}
                       />
                     </HStack>
@@ -937,7 +940,7 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")).render(
-  <InternationalizationProvider locale="ko-KR" messages={{ "ko-KR": koKR }}>
+  <InternationalizationProvider locale="en-US">
     <Theme theme={themes[defaultThemeSlug]} mode="light">
       <App />
     </Theme>

@@ -37,7 +37,7 @@ export function estimateRates(previous, current, elapsedMs) {
 }
 
 export function collectorStatus(status) {
-  if (!status) return { label: "수집기 준비 중", error: false };
+  if (!status) return { label: "Starting collector", error: false };
   const normal = [
     "observing",
     "running",
@@ -46,39 +46,40 @@ export function collectorStatus(status) {
   ];
   if (normal.includes(status.status)) {
     return {
-      label: status.zenoh_connected ? "수집기 실행 중" : "수집기 준비 중",
+      label: status.zenoh_connected ? "Collector running" : "Starting collector",
       error: false,
     };
   }
   if (!status.status)
     return {
-      label: status.zenoh_connected ? "수집기 실행 중" : "수집기 준비 중",
+      label: status.zenoh_connected ? "Collector running" : "Starting collector",
       error: false,
     };
   return {
-    label: "데이터를 수집할 수 없습니다. 연결 설정을 확인하세요.",
+    label: "Could not collect data. Check connection settings.",
     error: true,
     detail: status.status,
   };
 }
 
 export function validateCredentials(username, password, setup) {
-  if (!username || !password) return "사용자 이름과 비밀번호를 입력하세요.";
+  if (!username || !password) return "Enter your username and password.";
   if (!setup) return "";
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(username))
-    return "이름은 영문, 숫자, 밑줄(_), 하이픈(-)으로 1~64자 입력하세요.";
+    return "Use 1–64 English letters, numbers, underscores or hyphens for your username.";
   const length = new TextEncoder().encode(password).length;
-  if (Array.from(password).length < 4) return "비밀번호는 4자 이상 입력하세요.";
-  if (length > 256) return "비밀번호가 너무 깁니다. 더 짧게 입력하세요.";
+  if (Array.from(password).length < 4)
+    return "Use at least 4 characters for your password.";
+  if (length > 256) return "Password is too long. Use a shorter password.";
   return "";
 }
 
 export function receiveStatus(lastSeen, now, refreshFailed) {
   if (refreshFailed || !Number.isFinite(lastSeen) || lastSeen <= 0)
-    return { label: "수신 상태 확인 중", variant: "neutral", live: false };
+    return { label: "Reception unknown", variant: "neutral", live: false };
   const stale = now - lastSeen >= 5000;
   return {
-    label: stale ? "5초 이상 새 데이터 없음" : "최근 데이터 수신",
+    label: stale ? "No data for 5s or more" : "Recently received",
     variant: stale ? "error" : "success",
     live: !stale,
   };
@@ -102,8 +103,8 @@ export function inspectedTopic(topics, visible, selected, query) {
 }
 export function payloadPresentation(topic) {
   return topic.kind === "delete"
-    ? { deleted: true, label: "삭제 알림" }
-    : { deleted: false, label: "받은 데이터" };
+    ? { deleted: true, label: "Delete notification" }
+    : { deleted: false, label: "Received data" };
 }
 
 export function displaySnapshotAfterPoll(current, incoming, paused) {

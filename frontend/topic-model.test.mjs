@@ -73,7 +73,7 @@ test("rate estimates use real elapsed time, unknown first sample and counter res
 import { collectorStatus } from "./topic-model.mjs";
 test("collector labels distinguish known healthy messages, startup and errors", () => {
   assert.deepEqual(collectorStatus(null), {
-    label: "수집기 준비 중",
+    label: "Starting collector",
     error: false,
   });
   assert.deepEqual(
@@ -81,12 +81,12 @@ test("collector labels distinguish known healthy messages, startup and errors", 
       status: "Observing reachable live publications; source IP unavailable",
       zenoh_connected: true,
     }),
-    { label: "수집기 실행 중", error: false },
+    { label: "Collector running", error: false },
   );
   assert.deepEqual(
     collectorStatus({ status: "Invalid Zenoh config", zenoh_connected: false }),
     {
-      label: "데이터를 수집할 수 없습니다. 연결 설정을 확인하세요.",
+      label: "Could not collect data. Check connection settings.",
       error: true,
       detail: "Invalid Zenoh config",
     },
@@ -97,21 +97,21 @@ import { validateCredentials } from "./topic-model.mjs";
 test("setup copy validation matches ASCII usernames and four-character and UTF-8 byte limits", () => {
   assert.equal(validateCredentials("admin_01-test", "abcdefgh1234", true), "");
   assert.equal(validateCredentials("admin", "가나다라", true), "");
-  assert.match(validateCredentials("관리자", "abcdefgh1234", true), /이름/);
+  assert.match(validateCredentials("관리자", "abcdefgh1234", true), /username/);
   assert.match(
     validateCredentials("a".repeat(65), "abcdefgh1234", true),
-    /1~64/,
+    /1–64/,
   );
-  assert.match(validateCredentials("admin", "abc", true), /4자 이상/);
-  assert.match(validateCredentials("admin", "가".repeat(86), true), /너무 깁/);
+  assert.match(validateCredentials("admin", "abc", true), /at least 4 characters/);
+  assert.match(validateCredentials("admin", "가".repeat(86), true), /too long/);
   assert.equal(validateCredentials("admin", "old", false), "");
-  assert.match(validateCredentials("", "", false), /입력/);
+  assert.match(validateCredentials("", "", false), /Enter/);
 });
 
 test("password minimum counts Unicode characters, not UTF-8 bytes or UTF-16 units", () => {
-  assert.match(validateCredentials("admin", "가나다", true), /4자 이상/);
+  assert.match(validateCredentials("admin", "가나다", true), /at least 4 characters/);
   assert.equal(validateCredentials("admin", "가나다라", true), "");
-  assert.match(validateCredentials("admin", "😀😀😀", true), /4자 이상/);
+  assert.match(validateCredentials("admin", "😀😀😀", true), /at least 4 characters/);
   assert.equal(validateCredentials("admin", "😀😀😀😀", true), "");
   assert.equal(validateCredentials("admin", "abcd", true), "");
 });
@@ -150,7 +150,7 @@ test("inspector preserves selected topic when aged out but not search excluded",
 test("delete sample is distinct from an empty put and old server default", () => {
   assert.deepEqual(payloadPresentation({ kind: "delete" }), {
     deleted: true,
-    label: "삭제 알림",
+    label: "Delete notification",
   });
   assert.equal(
     payloadPresentation({ kind: "put", payload: "" }).deleted,

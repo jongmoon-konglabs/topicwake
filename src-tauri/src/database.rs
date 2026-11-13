@@ -9,7 +9,7 @@ pub fn prepare_database(
     source: Option<&Path>,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     if !directory.is_absolute() {
-        return Err("앱 데이터 폴더는 절대 경로여야 합니다.".into());
+        return Err("The app data folder must use an absolute path.".into());
     }
     let mut builder = fs::DirBuilder::new();
     builder.recursive(true);
@@ -24,7 +24,8 @@ pub fn prepare_database(
         use std::os::unix::fs::PermissionsExt;
         if fs::metadata(directory)?.permissions().mode() & 0o077 != 0 {
             return Err(
-                "앱 데이터 폴더의 접근 권한을 확인해 주세요. 개인 전용 폴더가 필요합니다.".into(),
+                "The app data folder must be private to your account. Check its permissions."
+                    .into(),
             );
         }
     }
@@ -36,7 +37,7 @@ pub fn prepare_database(
             let users =
                 existing.query_row("SELECT COUNT(*) FROM users", [], |row| row.get::<_, u64>(0))?;
             if users == 0 {
-                return Err("앱 데이터가 이미 있어 기존 계정을 자동으로 가져오지 않았습니다. 데이터는 덮어쓰지 않았습니다.".into());
+                return Err("An app database already exists. The account was not imported, and no data was overwritten.".into());
             }
         }
         return Ok(destination);

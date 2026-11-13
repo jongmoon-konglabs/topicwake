@@ -1,170 +1,32 @@
-# 검증 기준과 증거 경계
+# Verification
 
-상태: 검수 계획. 아래 표는 **통과 결과가 아니라 요구 조건**이다. 실제 실행 결과는 프로젝트 README 또는
-작업 완료 보고의 명령·결과를 함께 확인한다. 테스트 없이 체크박스를 완료로 바꾸지 않는다.
+Run checks from the project root after installing frontend dependencies:
 
-## 1. 인수 기준
+```sh
+npm --prefix frontend test
+npm --prefix frontend run build
+cargo test --locked
+cargo test --locked --manifest-path src-tauri/Cargo.toml
+python3 scripts/test-release-version.py
+```
 
-| ID | 계층 | 시나리오 | 기대 결과 |
-| --- | --- | --- | --- |
-| A01 | 인증 통합 | 계정 없는 새 DB | 최초 설정 상태만 표시, 보호 API는 차단 |
-| A02 | 인증 통합 | 계정 초기화 후 재설정 요청 | 기존 계정 덮어쓰기 거부 |
-| A03 | 인증 단위/통합 | 올바른/틀린 비밀번호 | 전자는 세션 발급, 후자는 일반화된 인증 실패 |
-| A04 | 인증 통합 | 로그인 전 `/api/status`, `/api/topics` | 데이터 없는 401 응답 |
-| A05 | 인증 통합 | 로그아웃·만료·위조 토큰 | 보호 데이터 접근 거부 |
-| A06 | 저장 | DB 계정 레코드 | 원문이 아닌 salt 포함 비밀번호 해시 |
-| A06a | 비밀번호 정책 | ASCII 3/4자·한글 3/4자 | Unicode scalar 3개는 거부, 4개는 허용 |
-| A06b | 비밀번호 크기 | UTF-8 256/257바이트 | 최소 scalar 수 충족 시 256 허용·257 거부 |
-| A06c | 호환성 | 기존 계정으로 로그인 | 기존 비밀번호·해시·세션 초기화 없이 검증 |
-| A07 | HTTP | 다른 Origin 또는 허용하지 않은 Host | 요청 거부, 인증 상태 변경 없음 |
-| A08 | HTTP | 정적 파일 접근 | DB·설정 비밀파일 접근 불가, 보안 헤더 확인 |
-| O01 | 순수 로직 | 같은 키에 두 샘플 | 한 행, 건수 증가, 최근 payload·시각 교체 |
-| O02 | 순수 로직 | 서로 다른 키 | 각각 별도 행 |
-| O03 | 순수 로직 | UTF-8/JSON/invalid UTF-8 | 안전한 표시, binary fallback, 실행되지 않음 |
-| O04 | 순수 로직 | preview 한도 초과 payload | 원본 크기 보존, 절단 flag, 허용 바이트 이내 |
-| O05 | 순수 로직 | 다중바이트 경계에서 절단 | panic 없음, 잘못된 문자열을 JSON으로 오인하지 않음 |
-| O06 | 순수 로직 | 키 수 상한 초과 | 정의된 제한 정책, 무한 메모리 증가 없음 |
-| O07 | 순수 로직 | source 정보 없는 샘플 | 원천 IP null/미확인; peer IP 전용하지 않음 |
-| Z01 | 격리 소프트웨어 | 루프백 전용 Zenoh 발행/구독 | 발행 키와 payload가 실제 관찰 목록에 반영 |
-| Z02 | 격리 소프트웨어 | 발견/연결 불가 설정 | 오류 상태가 UI까지 전달, 가짜 연결 없음 |
-| N01 | OS 어댑터 | IP·SSID 일부 필드 실패 | 독립 상태, 전체 앱 실패 없음 |
-| N02 | UI 계약 | 인터넷 미측정/오프라인, Zenoh 정상 | 독립된 상태로 표시 |
-| U01 | UI 로직 | 토픽 이름 검색 | trim·대소문자 비구분, 이름과 일치하는 행만 표시; payload·IP·ID만 일치하면 제외 |
-| U02 | UI 로직 | 각 정렬 필드·방향·동률 | 일관된 순서, 표시 방향과 결과 일치 |
-| U03 | 브라우저 | 주기적 목록 갱신 | 검색·정렬·선택 유지, 타이머 정리 |
-| U04 | 브라우저 | 검색 결과 0건 / 초기 0건 / API 장애 | 세 가지 상태 문구가 다름 |
-| U05 | 브라우저 | 세션 만료 | 보호 UI를 제거하고 로그인 화면으로 복귀 |
-| U06 | 브라우저 | 악성 HTML 문자열 payload | 문자로만 표시, script 실행 없음 |
-| U07 | 브라우저 | 키보드·360px·200% 확대 | 주요 동작 접근 가능, 화면 가로 넘침 제어 |
-| U08 | 인증 초기 조회 | `/auth/me` 401 / 연결 실패 / 재시도 | 기존 계정의 me 401은 로그인, 다른 실패는 시작 오류·재시도, 빈 계정 생성으로 오인하지 않음 |
+Build the frontend before the desktop Rust tests on a fresh checkout; the Tauri build script needs its assets. The release workflow performs this ordering and validates the packaged app and DMG.
 
-## 2. 구현 시 확인된 한계
+## App smoke check
 
-초기 구현 소스를 기준으로 확인한 범위이며, 후속 코드 변경 시 다시 대조한다.
+- Create an account or import a synthetic test database; sign in and sign out.
+- Search by topic name only; change sort order and select a row using mouse and keyboard.
+- Read JSON, plain text, binary previews, deletion notices, and truncated payloads.
+- Pause and resume. Confirm that collection continues and the next successful response restores the live view.
+- Check missing-data, refresh-error, startup-error, and empty-search states.
+- Resize around 900 px and 1100 px. Confirm details remain reachable, text fits, and focus returns to the list.
+- Launch twice, then quit. Confirm only one app instance remains and its listener closes on exit.
+- Check macOS Local Network behavior separately from a Terminal-launched service. Do not infer permission denial from an empty topic list.
 
-| 기능 | 소스 기준 상태 | 의미 |
-| --- | --- | --- |
-| 관찰 수량 | 최대 2,000개 키 | 전체 LAN 키의 개수가 아님 |
-| payload | 최근 8,192바이트 preview | 전체 이력·원본 영구 보관 아님 |
-| 원천 IP | 미확인 허용 | 원 발행자 IP 자동 보장 안 함 |
-| SSID | macOS en0 best-effort, 실패 시 null | 다른 인터페이스·OS는 지원 제한 |
-| 인터넷 | 명시적 요청 시 example.com:443 DNS/TCP 검사 | 자동 검사 아님, 일반 인터넷 건강도 아님 |
-| HTTP | 루프백 바인딩 | 다른 장치의 브라우저에서 직접 접속하는 배포는 별도 설계 필요 |
+## Safety and storage
 
-인터넷·SSID를 실제 확인하지 않는 버전은 PRD NET-03/NET-04의 P1 미달/제한으로 보고한다. 숨기거나 가상의
-값으로 채우지 않는다.
+Use isolated loopback Zenoh configuration and temporary databases for automated tests. Never connect tests to physical devices or publish to a hardware-connected network.
 
-## 3. 검증 실행 원칙
+Check database import with live WAL data, invalid sources, and existing destinations. Preserve the original database and reject overwrite attempts. Do not delete account data as a recovery step.
 
-- 단위 테스트는 가짜 샘플·임시 SQLite·고정된 시간을 사용한다.
-- Zenoh 통합 테스트는 격리된 루프백 endpoint와 전용 key로 한정한다. 운영 multicast나 실제 로봇에
-  자동 접속하지 않는다. UI 동작 검수에서도 테스트 데이터와 실데이터를 명확히 구분한다.
-- 인증·바이트 제한·검색·정렬은 가능한 작은 순수 테스트로 검증한다.
-- 빌드 성공, API 응답, 실제 브라우저, 실제 LAN 수신 결과를 별개 증거로 보고한다.
-- Mac 앱 검수는 임시 앱 데이터 폴더·격리된 루프백 Zenoh 설정으로 먼저 수행한다. 기존 웹 서버의 포트·DB를
-  재사용하거나 종료하지 않는다. Terminal 실행과 Finder의 앱 실행·권한 결과도 구분한다.
-- 문서 변경만 검증할 때는 링크·경로·문법·주장과 소스의 일치 여부를 검사한다.
-
-## 4. 실제 내부망 검수 체크리스트
-
-운영자가 대상 네트워크에서 수행하는 읽기 전용 확인이다. 자동 테스트 통과로 대체할 수 없다.
-
-1. 관찰 서버 호스트 IP·인터페이스가 대상 LAN인지 확인한다.
-2. Zenoh mode·multicast·직접 endpoint·ACL이 기존 네트워크와 호환되는지 확인한다.
-3. 알려진 발행 노드 한 대의 키와 실제 수신 payload를 대조한다.
-4. 새 샘플이 도착하는 동안 수신 시각·건수가 변하는지 확인한다.
-5. source metadata가 없으면 미확인으로 남는지 확인한다.
-6. router를 통과한 경우 router 주소와 publisher 주소가 혼동되지 않는지 확인한다.
-7. 인터넷을 끊어도 LAN이 유지되는 환경에서 상태가 독립적인지 확인한다.
-8. 로그아웃 후 보호 API에 접근할 수 없는지 확인한다.
-
-검수 과정에서 publish·delete·장비 제어를 하지 않는다. 네트워크에서 모든 키를 보지 못했다는 이유만으로
-방화벽·ACL을 임의 해제하지 않는다.
-
-## 5. 릴리스·복구 체크
-
-- 버전과 lockfile을 기록하고, 검증되지 않은 dependency 최신화를 섞지 않는다.
-- 남은 제한을 사용자 화면·README에 같은 표현으로 기록한다.
-- DB 파일을 정적 경로에 두지 않고 백업·권한을 확인한다.
-- 이전 버전으로 되돌릴 때 계정·세션 데이터의 호환성을 확인한다. DB 삭제를 기본 복구로 사용하지 않는다.
-- 서버 종료·복구가 Zenoh 장비 명령을 보내지 않는지 유지한다.
-- 앱 패키지에 사용자 DB·세션·개발자 절대 경로가 들어 있지 않은지 확인한다. 외부 배포 전 서명·공증은 별도 검증한다.
-- GitHub Actions 수동 실행은 아티팩트만 만들고, 정식 버전 태그 실행만 Release를 발행하는지 확인한다.
-- 버전 불일치·테스트·arm64 앱 검사 실패 때 Release가 생성되지 않는지 확인한다. 첨부 파일의 SHA-256과
-  자동 릴리스 노트·미공증 경고를 확인한다. [발행 조건](releasing.md)은 워크플로와 함께 유지한다.
-
-## 6. 연속 수신·신선도 추가 검수
-
-| ID | 시나리오 | 기대 결과 | 초기 증거 상태 |
-| --- | --- | --- | --- |
-| L01 | UI 1회 갱신 사이 같은 키에 다중 샘플 | 최근 payload와 모든 처리 샘플의 누적 count | 단위·격리 통합 필요 |
-| L02 | 브라우저 미접속/로그아웃 상태에서 발행 | 서버 수집은 계속, 재로그인 시 최신 스냅샷 | 통합 검수 필요 |
-| L03 | 탭 백그라운드 후 복귀 | 수집 누적분은 count에 반영, 이력 복구를 주장하지 않음 | 브라우저 검수 필요 |
-| L04 | Zenoh 세션은 열렸지만 무수신 | 세션 상태와 데이터 나이를 별도 표시 | UI 검수 필요 |
-| L05 | HTTP 오류 뒤 과거 스냅샷 유지 | 갱신 실패·이전 자료임을 표시 | UI 검수 필요 |
-| L06 | 서버 재시작 | 관찰 카운터 reset을 정상 처리 | 통합 검수 필요 |
-| L07 | 키 상한 도달 뒤 기존 키 발행 | 기존 키 count·payload 계속 갱신 | 단위 검수 필요 |
-| L08 | UI 추정 Hz | 관측 창·단위 명시, 초기값/0초/reset 처리 | estimateRates 소스 확인, 실행 결과 별도 |
-| L09 | 오래된 저주기 토픽 | stale를 발행자 장애로 단정하거나 자동 삭제하지 않음 | 디자인 계약 |
-
-표의 “필요”는 검사 누락을 숨기는 표현이 아니라 이 문서 작성 시 아직 연결된 실행 증거가 없다는 뜻이다.
-부모 작업의 테스트 결과가 있으면 실제 테스트 이름과 결과로 대체한다.
-
-## 7. 리디자인 추가 검수 기준
-
-| ID | 시나리오 | 기대 결과 | 증거 경계 |
-| --- | --- | --- | --- |
-| D01 | viewport 900/1100px 경계 | 900–1099px 목록·상세, 1100px 이상 네트워크 정보 레일·목록·상세; 서로 덮지 않음 | 소스 확인, 최종 시각 검수 별도 |
-| D02 | viewport 900px 미만에서 선택 | 데이터 화면으로 전환, 목록 복귀 버튼 제공; Drawer·표 아래 상세 없음 | 소스 확인, 포커스·스크롤 실측 별도 |
-| D03 | 긴 목록 마지막 행 선택 | 목록/상세 독립 스크롤로 데이터가 접근 가능한 작업영역에 남음 | 브라우저 검수 필요 |
-| D04 | 목록 밀도 | compact List, 선택 전체 행 음영; 상태 점·긴 키·초당 수신량을 읽을 수 있음 | 소스 확인, 실제 행 높이·가독성 별도 |
-| D05 | 이름 검색 후 기존 선택이 제외 | 현재 검색 결과의 첫 토픽 또는 빈 상세; 검색과 다른 토픽 표시 안 함 | 선택 순수 로직·UI 검수 필요 |
-| D06 | 데이터 상세 | CodeBlock을 메타데이터보다 먼저 표시, 원본 크기·절단 경고 보존 | 소스 확인 |
-| D07 | 상단 요약·네트워크 | 작은 상태 줄은 수신한 토픽 수 표시; 기본 네트워크에는 서버 IP·Wi-Fi·인터넷, 피어 수·ID 목록 없음 | 소스 문구 대조 |
-| D08 | 기본 운영 화면 | 짧은 한국어, 구현 설명은 접힌 도움말; 화면 갱신과 수신 시각 구분 | 소스 문구 대조 |
-| D09 | mock 예시 | 실제 LAN 관찰 데이터로 오인시키지 않음 | live LAN 검증 아님 |
-| D10 | 키보드·360/768/899/900/1099/1100/1280/1440px·200% 확대 | 검색·선택·목록 복귀·복사 접근 가능, 의도치 않은 가로 넘침 없음 | 브라우저 검수 필요 |
-| D11 | 목록 요약 | 목록은 이름·상태·초당 수신량, 받은 횟수·최근 수신은 상세에 보존하고 정렬 유지 | 소스 확인, 실제 넘침 검수 별도 |
-| D12 | HTTP 갱신 실패 후 경과 | 최근 수신 나이는 독립 UI clock으로 증가, 새 자료처럼 보이지 않음 | 소스 확인, 브라우저 검수 별도 |
-| D13 | 토픽별 수신 표시 | 마지막 수신 후 <5초 초록, ≥5초 빨강; 미측정·갱신 실패 중립 확인 상태; 오프라인 단정 없음 | 4999/5000ms 경계 로직·브라우저 검수 필요 |
-| D14 | 작업영역 간격 | 가운데 최대90rem, 좌우 padding 6/3·상하3, pane gap spacing-4; 제한된 목록 폭과 상세 잔여 폭 | 소스 확인, 실제 여백 검수 별도 |
-| D15 | 마지막 수신 후 5분 경계 | 299999ms 표시·300000ms 기본 숨김, 보기 토글로 복원; 데이터 삭제 없음 | 경계 로직·브라우저 검수 필요 |
-| D16 | 갱신 실패와 오래된 토픽 | 실패 직전 표시 시각으로 5분 판정 고정, 이미 숨긴 토픽 부활 없음; 중립 확인 상태 | 순수 로직·브라우저 검수 필요 |
-| D17 | 행 전체 선택·누적 수 | 행의 이름 밖 영역도 선택 가능; 상세의 수집 후 받은 수는 서버 프로세스 누적값 | 실제 클릭 영역·소스 대조 |
-| D18 | 선택한 토픽만 5분 경과 | 목록에서는 숨겨져도 상세 선택 보존, 숨겨짐 안내·복원 버튼 | 선택 순수 로직·브라우저 검수 필요 |
-| D19 | 화면 일시정지·계속 | 스냅샷과 정지 시점의 5분 가시성 고정, 수집·조회 계속; 상태 미확인·속도 —; 재개 후 다음 정상 응답 반영 | 스냅샷 순수 로직·브라우저 검수 필요 |
-| D20 | put/delete 샘플 | delete는 삭제 알림, put은 데이터; kind 누락을 delete로 추정하지 않음 | 표현 순수 로직·격리 전송 검사 필요 |
-| D21 | 복사·검사 실패 후 정상 polling | 동작 오류가 유지되고 닫기 가능; polling 오류와 분리 | 브라우저 검수 필요 |
-| D22 | 인터넷 검사 | example.com:443 한정 결과·검사 시각 표시, 전체 인터넷 정상으로 단정 없음 | 소스 대조·수동 검사 별도 |
-| D23 | 네트워크 패널 | 정보 레일은 한 열, 접힌 패널은 IP·Wi-Fi·인터넷 최대3열; 전체 IP 주소 disclosure 보존, 피어 수·ID 목록 없음 | 소스 대조·반응형 검수 필요 |
-| D24 | 대표 IP | 첫 non-loopback 우선, 없으면 첫 주소; 기본 경로·Zenoh 경로로 단정하지 않음 | 주소 선택 순수 로직·소스 대조 |
-| D25 | 정지 중 로그아웃·401 후 재로그인 | 정지·검색·선택·캐시 초기화, 이전 세션 화면 상태를 새 세션에 전용하지 않음 | 소스 대조·브라우저 검수 필요 |
-| D26 | 토픽 수와 연결 ID | UI에는 고유 키 수만 표시; API의 피어 ID 수를 장치·토픽·발행자·IP와 동일시하지 않음 | observer.rs·문구 대조, 실제 ID 소유자 미확인 |
-| D27 | 선택·가독성 테마 | light Observatory 테마, 선택 행은 연한 파랑·시작선; 한국어 시스템 글꼴·plaintext CodeBlock 줄 번호 유지 | 테마 소스 확인, 실제 대비·가독성 검수 별도 |
-| D28 | 목록 도구 | 정렬 Selector·방향 버튼·오래된 토픽 토글, 키보드 조작·현재 값 표시 | 소스 확인, 실제 키보드·좁은 폭 검수 별도 |
-
-현재 소스는 `List density="compact"`, 900/1100px 분기, 최대90rem 프레임과 독립 스크롤을 사용한다.
-1100px 이상 grid는 `11rem clamp(20rem,28vw,25rem) minmax(0,1fr)`다. 이 선언만으로 실제 화면 동작·색 대비·접근성 완료를 주장하지 않는다.
-95점·A+ 판정은 항목별 관찰 결과와 미검증 범위를 함께 기록할 때만 유효하다.
-
-개발 중 mock 서비스는 실제 데이터로 오인될 수 있어 종료했다. 이는 실제 내부망 수집 결과가 아니며 최종
-브라우저·LAN 검수 완료를 뜻하지 않는다.
-
-## 8. Mac 앱 전환 검수 기준
-
-아래는 앱 전용 인수 기준이며 통과 기록이 아니다. 빌드·격리 테스트·네이티브 화면·Finder 권한·실제 LAN
-증거를 따로 기록한다. 검증 명령과 산출물 경로는 [README](../README.md)가 소유한다.
-
-| ID | 시나리오 | 기대 결과 | 검증 계층 |
-| --- | --- | --- | --- |
-| M01 | `.app` 패키지 실행 | 번들 UI 리소스를 사용하며 실행 작업 디렉터리·별도 웹 서버에 의존하지 않음 | 패키지·네이티브 실행 |
-| M02 | 기존 8080 웹 서버 실행 중 앱 시작 | 앱이 자기 임의 루프백 listener를 소유, 기존 서버·DB 유지 | 격리 통합·프로세스 확인 |
-| M03 | 실행 중인 WAL DB에서 첫 이관 | 계정·해시 보존, 원본 계정·세션 유지, 복사본 세션만 제거 | 임시 DB 단위 |
-| M04 | 기존 앱 DB / 잘못된 이관 원본 | 기존 계정 우선·대상 덮어쓰기 없음, 실패를 빈 계정 생성으로 숨기지 않음 | 임시 DB 단위·시작 오류 |
-| M05 | 앱 데이터 폴더·신규 파일 | 절대·개인 전용 경로, 다른 사용자가 접근 가능한 폴더 거부 | 권한 단위·산출물 확인 |
-| M06 | 중복 실행·빨간 닫기·Quit | 기존 창을 앞으로 표시, 앱 종료 시 HTTP listener·Zenoh 작업 종료 | 실제 앱·프로세스 확인 |
-| M07 | 외부 URL·새 창·native API 호출 | 자기 origin 외 navigation·popup 차단, native IPC 권한 미노출 | 소스·네이티브 검수 |
-| M08 | 1280×800·최소 760×560 창 | 제목 중복 억제, 검색·선택·데이터·목록 복귀 접근 가능 | WKWebView 시각·키보드 |
-| M09 | 시작 조회 실패 후 재시도 | 로그인/최초 설정으로 오인하지 않는 시작 오류, 정상 응답 후 복귀 | UI 로직·네이티브 검수 |
-| M10 | macOS 로컬 네트워크 권한 | 사용 목적 안내, 거절/미수신 원인을 단정하지 않음, 허용 후 재실행 경로 | Finder·OS 권한·읽기 전용 LAN |
-| M11 | 외부 배포 준비 | 사용자 DB·비밀정보 번들 제외, 서명·공증을 로컬 빌드와 구분 | 패키지·배포 검증 |
+A passing build is not evidence of network discovery, physical device behavior, accessibility conformance, or Apple notarization. Record those checks separately when performed.

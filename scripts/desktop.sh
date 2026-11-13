@@ -6,7 +6,7 @@ case "${1:-run}" in
   build)
     available=$(df -Pk "$root" | awk 'NR == 2 { print $4 }')
     if [ "$available" -lt 6291456 ]; then
-      echo "앱 빌드에 필요한 저장 공간이 부족합니다. 여유 공간을 6GiB 이상 확보해 주세요." >&2
+      echo "Not enough disk space to build. Free at least 6 GiB and try again." >&2
       exit 1
     fi
     exec npx --yes @tauri-apps/cli@2.12.4 build --bundles app
@@ -21,7 +21,7 @@ case "${1:-run}" in
       "$root/src-tauri/target/debug/bundle/macos/Zenoh Observatory.app"; do
       if [ -d "$candidate" ]; then app="$candidate"; break; fi
     done
-    if [ -z "$app" ]; then echo "먼저 scripts/desktop.sh build를 실행하세요." >&2; exit 1; fi
+    if [ -z "$app" ]; then echo "Run scripts/desktop.sh build first." >&2; exit 1; fi
     if [ -z "${ZENOH_ADMIN_IMPORT_DB:-}" ] && [ -f "$root/zenoh-admin.sqlite3" ]; then export ZENOH_ADMIN_IMPORT_DB="$root/zenoh-admin.sqlite3"; fi
     set -- /usr/bin/open
     if [ -n "${ZENOH_ADMIN_IMPORT_DB:-}" ]; then
@@ -35,5 +35,5 @@ case "${1:-run}" in
     fi
     exec "$@" "$app"
     ;;
-  *) echo "사용법: scripts/desktop.sh [build|run]" >&2; exit 2 ;;
+  *) echo "Usage: scripts/desktop.sh [build|run]" >&2; exit 2 ;;
 esac

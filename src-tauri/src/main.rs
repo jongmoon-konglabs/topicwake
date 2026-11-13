@@ -13,34 +13,36 @@ struct DesktopServer(Mutex<Option<zenoh_admin::RunningServer>>);
 fn main() {
     let server = Arc::new(DesktopServer::default());
     let setup_server = server.clone();
-    let app =
-        tauri::Builder::default()
-            .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_dialog::init())
+        .setup(move |app| {
+            if let Err(error) = start(app, setup_server.clone()) {
+                let running = setup_server.0.lock().unwrap().take();
+                if let Some(running) = running {
+                    tauri::async_runtime::block_on(running.shutdown());
                 }
-            }))
-            .plugin(tauri_plugin_dialog::init())
-            .setup(move |app| {
-                if let Err(error) = start(app, setup_server.clone()) {
-                    let running = setup_server.0.lock().unwrap().take();
-                    if let Some(running) = running {
-                        tauri::async_runtime::block_on(running.shutdown());
-                    }
-                    app.dialog()
+                app.dialog()
                     .message(format!(
-                        "앱을 시작할 수 없습니다.\n\n{error}\n\n앱을 종료한 뒤 다시 실행해 주세요."
+                        "Topicwake could not start.\n\n{error}\n\nQuit the app and try again."
                     ))
                     .title("Topicwake")
                     .kind(tauri_plugin_dialog::MessageDialogKind::Error)
-                    .show({ let handle = app.handle().clone(); move |_| handle.exit(1) });
-                    return Ok(());
-                }
-                Ok(())
-            })
-            .build(tauri::generate_context!())
-            .expect("failed to initialize Topicwake");
+                    .show({
+                        let handle = app.handle().clone();
+                        move |_| handle.exit(1)
+                    });
+                return Ok(());
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("failed to initialize Topicwake");
     app.run(move |app, event| {
         if let tauri::RunEvent::Exit = event {
             // The webview is no longer usable before its owned loopback server releases its port.

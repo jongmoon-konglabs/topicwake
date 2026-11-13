@@ -107,5 +107,5 @@ jobs:
         run: |
           set -euo pipefail
           (cd artifacts && sha256sum --check ./*.sha256)
-          notice='macOS Apple Silicon용 빌드입니다. 앱은 ad-hoc 서명만 되어 있으며 Apple Developer ID 서명·공증은 제공하지 않습니다. 인터넷에서 내려받은 앱은 Gatekeeper에 의해 차단될 수 있습니다. 조직의 보안 정책을 따르세요.'
+          notice='Apple Silicon only. This app is ad-hoc signed, not signed with an Apple Developer ID or notarized. Gatekeeper may block downloaded builds; follow your organization’s security policy.'
           gh release create "$RELEASE_TAG" artifacts/* --verify-tag --generate-notes --notes "$notice"
